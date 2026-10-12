@@ -1,0 +1,14 @@
+{
+  "name": "thaicom-4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "mongodb": "^6.20.0"
+  }
+}

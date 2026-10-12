@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thaicom 4 (iPSTAR) De-orbit Optical Tracking & Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0b0f19',
+                        cardbg: '#111827',
+                        cardborder: '#1f2937',
+                        accentblue: '#3b82f6',
+                        accentcyan: '#06b6d4',
+                        accentgreen: '#10b981',
+                        accentgold: '#f59e0b'
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+        .image-viewer-container {
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        .image-viewer-container:active {
+            cursor: grabbing;
+        }
+        .observation-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            background: #0b1220;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .observation-table caption {
+            padding: 14px 16px;
+            text-align: left;
+            color: #e2e8f0;
+            font-size: 16px;
+            font-weight: 700;
+            background: #111c2e;
+            border-bottom: 1px solid #263449;
+        }
+        .observation-table th, .observation-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #1c293b;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+        }
+        .observation-table th[scope="row"] {
+            width: 44%;
+            text-align: left;
+            color: #94a3b8;
+            font-weight: 400;
+        }
+        .observation-table td {
+            color: #e2e8f0;
+            text-align: right;
+            font-family: ui-monospace, monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        .observation-table .table-section th {
+            padding: 9px 14px;
+            text-align: left;
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--table-accent);
+            background: var(--table-tint);
+        }
+        .observation-table tbody tr:nth-child(odd):not(.table-section) { background: #ffffff03; }
+        .observation-table tbody tr:not(.table-section):hover { background: #ffffff08; }
+        .observation-table tr:last-child th, .observation-table tr:last-child td { border-bottom: 0; }
+        #observation-tle-tracking {
+            width: max-content;
+            margin: 0;
+            white-space: pre;
+        }
+        .observation-summary { min-width: 0; }
+
+    </style>
+</head>
+<body class="bg-darkbg text-gray-200 min-h-screen font-sans antialiased pb-12">
+
+    <header class="border-b border-cardborder bg-cardbg/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <img src="logonarit.webp" alt="NARIT" class="w-14 h-14 shrink-0 object-contain">
+                    <div>
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-blue-400">National Astronomical Research Institute of Thailand</h2>
+                        <p class="text-lg font-bold text-white tracking-wide">NOSCD Project</p>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-medium mb-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        THAICOM 4 DE-ORBIT MONITORING
+                    </div>
+                    <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">THAICOM 4 (IPSTAR-1)</h1>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-amber-400">Royal Thai Air Force</h2>
+                        <p class="text-lg font-bold text-white tracking-wide">RTAF Space Operations Center</p>
+                    </div>
+                    <img src="logospoc.webp" alt="RTAF Space Operations Center" class="w-14 h-14 shrink-0 object-contain">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 space-y-6">
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-cardbg border border-cardborder rounded-xl p-4 flex items-center gap-3">
+                <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                    <i data-lucide="radio" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium"><span data-page-text="Tracking Status">Tracking Status</span></p>
+                    <p class="text-base font-bold text-emerald-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> <span data-page-text="ACTIVE TRACKING">ACTIVE TRACKING</span>
+                    </p>
+                </div>
+            </div>
+            <div class="bg-cardbg border border-cardborder rounded-xl p-4 flex items-center gap-3">
+                <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg">
+                    <i data-lucide="orbit" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium"><span data-page-text="Orbit type">Orbit type</span></p>
+                    <p class="text-base font-bold text-white"><span data-page-text="GEO (Geostationary Earth Orbit)">GEO</span></p>
+                </div>
+            </div>
+            <div class="bg-cardbg border border-cardborder rounded-xl p-4 flex items-center gap-3">
+                <div class="p-3 bg-cyan-500/10 text-cyan-400 rounded-lg">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium"><span data-page-text="Date">Date</span></p>
+                    <p id="local-time" class="text-base font-bold text-white"></p>
+                </div>
+            </div>
+            <div class="bg-cardbg border border-cardborder rounded-xl p-4 flex items-center gap-3">
+                <div class="p-3 bg-purple-500/10 text-purple-400 rounded-lg">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 uppercase font-medium"><span data-page-text="Local Time — เวลาไทย (UTC+7)">Local Time — เวลาไทย (UTC+7)</span></p>
+                    <p id="thai-time" class="text-base font-bold text-purple-400"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-cardbg border border-cardborder rounded-2xl p-5 shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-cardborder">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="code-2" class="w-5 h-5 text-accentcyan"></i>
+                    <h3 class="text-base font-bold text-white uppercase tracking-wider"><span data-page-text="Update TLE">Update TLE</span></h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="epoch-display" class="text-xs font-mono text-gray-400 bg-gray-800/80 px-2.5 py-1 rounded-md border border-gray-700"></span>
+                    <button onclick="copyTLE()" id="copy-btn" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors shadow-md">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span data-page-text="Copy TLE">Copy TLE</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-black/80 rounded-xl p-4 border border-gray-800 font-mono text-sm sm:text-base text-emerald-400 overflow-x-auto relative">
+                <pre id="tle-display" class="leading-relaxed select-all">—</pre>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mt-4 pt-2 text-xs">
+                <div class="bg-gray-900/50 p-2.5 rounded-lg border border-gray-800">
+                    <p class="text-gray-400"><span data-page-text="Inclination">Inclination</span></p>
+                    <p id="tle-inclination" class="font-mono font-bold text-white text-sm">—</p>
+                </div>
+                <div class="bg-gray-900/50 p-2.5 rounded-lg border border-gray-800">
+                    <p class="text-gray-400"><span data-page-text="Eccentricity">Eccentricity</span></p>
+                    <p id="tle-eccentricity" class="font-mono font-bold text-white text-sm">—</p>
+                </div>
+                <div class="bg-gray-900/50 p-2.5 rounded-lg border border-gray-800">
+                    <p class="text-gray-400"><span data-page-text="RAAN">RAAN</span></p>
+                    <p id="tle-raan" class="font-mono font-bold text-white text-sm">—</p>
+                </div>
+                <div class="bg-gray-900/50 p-2.5 rounded-lg border border-gray-800">
+                    <p class="text-gray-400"><span data-page-text="Arg of Perigee">Arg of Perigee</span></p>
+                    <p id="tle-perigee" class="font-mono font-bold text-white text-sm">—</p>
+                </div>
+                <div class="bg-gray-900/50 p-2.5 rounded-lg border border-gray-800">
+                    <p class="text-gray-400"><span data-page-text="Mean Anomaly">Mean Anomaly</span></p>
+                    <p id="tle-anomaly" class="font-mono font-bold text-white text-sm">—</p>
+                </div>
+                <div class="bg-gray-900/50 p-2.5 rounded-lg border border-gray-800">
+                    <p class="text-gray-400"><span data-page-text="Mean Motion">Mean Motion</span></p>
+                    <p id="tle-motion" class="font-mono font-bold text-emerald-400 text-sm">—</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="scan" class="w-5 h-5 text-blue-400"></i> <span data-page-text="Optical Observation Comparison Mode">Optical Observation Comparison Mode</span>
+                    </h3>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="inline-flex items-center gap-1.5 bg-gray-800 text-gray-300 px-3 py-1 rounded-full border border-gray-700">
+                        <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-blue-400"></i> <span data-page-text="Drag = Pan | Scroll = Zoom">Drag = Pan | Scroll = Zoom</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <div class="bg-cardbg border border-cardborder rounded-2xl overflow-hidden flex flex-col shadow-xl">
+                    <div class="p-4 bg-gray-900/80 border-b border-cardborder flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-wider"><span data-page-text="Mode 1">Mode 1</span></span>
+                            <h4 class="text-base font-bold text-white mt-1"><span data-page-text="Tracking Mode">Tracking Mode</span></h4>
+                                </div>
+                        <div class="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-gray-800">
+                            <button onclick="zoomViewer('viewer1', 1.25)" data-page-title="Zoom In" title="Zoom In" class="p-1.5 hover:bg-gray-700 text-gray-300 rounded transition"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                            <button onclick="zoomViewer('viewer1', 0.8)" data-page-title="Zoom Out" title="Zoom Out" class="p-1.5 hover:bg-gray-700 text-gray-300 rounded transition"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+                            <button onclick="resetViewer('viewer1')" data-page-title="Reset View" title="Reset View" class="p-1.5 hover:bg-gray-700 text-gray-300 rounded transition"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+
+                    <div id="viewer1-wrapper" class="relative w-full h-[400px] bg-black overflow-hidden image-viewer-container">
+                        <canvas id="viewer1-canvas" class="w-full h-full block"></canvas>
+                        
+                        <div class="absolute bottom-3 right-3 bg-black/75 backdrop-blur px-2.5 py-1 rounded-md border border-gray-800 text-xs font-mono text-blue-400 pointer-events-none">
+                            <span data-page-text="Zoom:">Zoom:</span> <span id="viewer1-zoom-level">1.0x</span>
+                        </div>
+                        
+                        <div class="absolute top-3 left-3 bg-black/75 backdrop-blur px-2.5 py-1 rounded-md border border-gray-800 text-xs font-mono text-emerald-400 pointer-events-none flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> <span data-page-text="Target: Point Source">Target: Point Source</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border-t border-cardborder bg-gray-900/40">
+                        <section class="observation-summary min-w-0 min-h-[144px] rounded-xl border border-slate-700/60 bg-slate-950/60 p-4 flex flex-col items-center justify-center text-center">
+                            <h5 class="text-base font-semibold text-blue-400 mb-3 self-center text-center border border-blue-500/40 bg-blue-500/10 rounded-lg px-6 py-1">TLE</h5>
+                            <pre id="observation-tle-tracking" class="text-sm leading-relaxed font-mono text-emerald-300 select-all">—</pre>
+                        </section>
+                    </div>
+
+                    <div id="header-tracking" class="p-4 bg-gray-900/40 border-t border-cardborder text-xs"></div>
+                </div>
+
+                <div class="bg-cardbg border border-cardborder rounded-2xl overflow-hidden flex flex-col shadow-xl">
+                    <div class="p-4 bg-gray-900/80 border-b border-cardborder flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider"><span data-page-text="Mode 2">Mode 2</span></span>
+                            <h4 class="text-base font-bold text-white mt-1"><span data-page-text="Sidereal Mode">Sidereal Mode</span></h4>
+                                </div>
+                        <div class="flex items-center gap-1 bg-black/50 p-1 rounded-lg border border-gray-800">
+                            <button onclick="zoomViewer('viewer2', 1.25)" data-page-title="Zoom In" title="Zoom In" class="p-1.5 hover:bg-gray-700 text-gray-300 rounded transition"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                            <button onclick="zoomViewer('viewer2', 0.8)" data-page-title="Zoom Out" title="Zoom Out" class="p-1.5 hover:bg-gray-700 text-gray-300 rounded transition"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+                            <button onclick="resetViewer('viewer2')" data-page-title="Reset View" title="Reset View" class="p-1.5 hover:bg-gray-700 text-gray-300 rounded transition"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+
+                    <div id="viewer2-wrapper" class="relative w-full h-[400px] bg-black overflow-hidden image-viewer-container">
+                        <canvas id="viewer2-canvas" class="w-full h-full block"></canvas>
+                        
+                        <div class="absolute bottom-3 right-3 bg-black/75 backdrop-blur px-2.5 py-1 rounded-md border border-gray-800 text-xs font-mono text-amber-400 pointer-events-none">
+                            <span data-page-text="Zoom:">Zoom:</span> <span id="viewer2-zoom-level">1.0x</span>
+                        </div>
+
+                        <div class="absolute top-3 left-3 bg-black/75 backdrop-blur px-2.5 py-1 rounded-md border border-gray-800 text-xs font-mono text-cyan-400 pointer-events-none flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400"></span> <span data-page-text="Stars: Pinpoint Dots">Target: White Line</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border-t border-cardborder bg-gray-900/40">
+                        <section class="observation-summary min-w-0 min-h-[144px] rounded-xl border border-slate-700/60 bg-slate-950/60 p-4 flex flex-col items-center justify-center text-center">
+                            <h5 class="text-base font-semibold text-amber-400 mb-3 self-center text-center border border-amber-500/40 bg-amber-500/10 rounded-lg px-6 py-1"><span data-page-text="RA / Dec">RA / Dec</span></h5>
+                            <dl class="text-base sm:text-lg grid grid-cols-2 gap-4 sm:gap-8 w-full max-w-sm">
+                                <div><dt class="text-gray-400"><span data-page-text="RA">RA</span></dt><dd id="observation-ra-sidereal" class="font-mono text-white break-words">—</dd></div>
+                                <div><dt class="text-gray-400"><span data-page-text="Dec">Dec</span></dt><dd id="observation-dec-sidereal" class="font-mono text-white break-words">—</dd></div>
+                            </dl>
+                        </section>
+                    </div>
+
+                    <div id="header-sidereal" class="p-4 bg-gray-900/40 border-t border-cardborder text-xs"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <section id="tle-section" lang="en" class="bg-cardbg border border-cardborder rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div><p id="tle-eyebrow" class="text-xs tracking-widest text-gray-500 uppercase mb-1">Orbit evolution</p><h3 id="tle-heading" class="text-xl font-bold text-white">TLE Orbital Elements (NORAD ID: 28786)</h3></div>
+                <span id="tle-badge" class="text-xs text-amber-300 border border-amber-400/30 bg-amber-400/10 rounded-full px-3 py-1">TLE HISTORY · 10 DAYS</span>
+            </div>
+            <div id="tle-controls" class="flex flex-wrap gap-2" role="group" aria-label="Select orbital element"></div>
+            <h4 id="tle-title" class="text-sm font-semibold"></h4>
+            <p id="tle-status" class="text-xs text-gray-400" role="status" aria-live="polite"></p>
+            <div id="tle-summary" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+            <div class="w-full relative rounded-xl border border-slate-800 bg-slate-950/50 p-3 sm:p-5" style="height:360px"><canvas id="tleChart" role="img" aria-label="Orbital observations"></canvas></div>
+        </section>
+
+    </main>
+
+    <footer lang="en" style="margin-top: 80px; min-height: 128px; display: flex; align-items: center; justify-content: center;" class="border-t border-cardborder px-6 py-6 text-center text-xs leading-relaxed text-gray-400">
+        <p class="mx-auto max-w-5xl">This research has received funding support from the NSRF via the Research and Innovation Acceleration Agency for Competitiveness and Area Development (RCAD) (Program Management Unit for Frontier Brainpower and Future Industries) [grant number B46G690115]</p>
+    </footer>
+
+    <script>
+        const apiUrl = path => path;
+        const apiFetch = (url, options = {}) => fetch(url, {
+            ...options, credentials: 'same-origin', cache: 'no-store'
+        });
+
+        const pageLanguage = 'en';
+        const pageText = text => text;
+        const currentImageHeaders = {};
+        const expandedImageHeaders = {};
+        let epochEnglish = '—';
+        function renderEpoch() {
+            let text = epochEnglish;
+            if (pageLanguage === 'th') {
+                const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                const thai = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+                text = text.replace('Epoch:', 'เวลาอ้างอิง:');
+                months.forEach((month, index) => { text = text.replace(month, thai[index]); });
+            }
+            document.getElementById('epoch-display').textContent = text;
+        }
+        const observationFields = [["OBJECT", "Target"], ["DATE-OBS", "Observation (UTC)"], ["EXPTIME", "Exposure (s)"], ["INSTRUME", "Camera"], ["SITE", "Site"], ["OBJCTRA", "RA"], ["OBJCTDEC", "Dec"], ["NAXIS1", "Width (px)"], ["NAXIS2", "Height (px)"], ["XBINNING", "Binning X"], ["YBINNING", "Binning Y"], ["CCD-TEMP", "CCD temperature (\u00b0C)"], ["FILTER", "Filter"], ["FOCALLEN", "Focal length (mm)"], ["APTDIA", "Aperture (mm)"], ["ALT", "Altitude (\u00b0)"], ["AZI", "Azimuth (\u00b0)"], ["AIRMASS", "Airmass"], ["LAT", "Latitude (\u00b0)"], ["LONG", "Longitude (\u00b0)"]];
+
+        function parseImageHeader(text) {
+            const values = {};
+            for (const line of text.split(/\r?\n/)) {
+                const match = line.match(/^([A-Z0-9-]+)\s*=\s*(?:'([^']*)'|([^/]*))/);
+                if (match) values[match[1]] = (match[2] ?? match[3]).trim();
+            }
+            return values;
+        }
+
+        function renderImageHeader(mode, values) {
+            currentImageHeaders[mode] = values;
+            if (mode === 'Sidereal') {
+                document.getElementById('observation-ra-sidereal').textContent = values.OBJCTRA || '—';
+                document.getElementById('observation-dec-sidereal').textContent = values.OBJCTDEC || '—';
+            }
+            const container = document.getElementById(`header-${mode.toLowerCase()}`);
+            const table = document.createElement('table');
+            table.className = 'observation-table';
+            table.style.setProperty('--table-accent', mode === 'Tracking' ? '#60a5fa' : '#fbbf24');
+            table.style.setProperty('--table-tint', mode === 'Tracking' ? '#3b82f610' : '#f59e0b10');
+            const caption = table.createCaption();
+            const captionContent = document.createElement('div');
+            captionContent.className = 'flex items-center justify-between gap-3';
+            const captionTitle = document.createElement('span');
+            captionTitle.textContent = pageText(`${mode} · Observation`);
+            const detailsButton = document.createElement('button');
+            detailsButton.type = 'button';
+            detailsButton.className = 'shrink-0 rounded-lg border border-slate-600 px-3 py-1 text-sm text-blue-300 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400';
+            captionContent.append(captionTitle, detailsButton);
+            caption.append(captionContent);
+            const groups = [
+                ['Observation', ['OBJECT', 'DATE-OBS', 'EXPTIME', 'SITE']],
+                ['Position', ['LAT', 'LONG', 'ALT', 'AZI', 'AIRMASS']],
+                ['Camera & Optics', ['INSTRUME', 'CCD-TEMP', 'FILTER', 'NAXIS1', 'NAXIS2', 'XBINNING', 'YBINNING', 'FOCALLEN', 'APTDIA']]
+            ];
+            const labels = Object.fromEntries(observationFields);
+            const detailBodies = [];
+            for (const [name, keys] of groups) {
+                const body = table.createTBody();
+                if (name !== 'Observation') {
+                    body.id = `header-${mode.toLowerCase()}-details-${detailBodies.length}`;
+                    detailBodies.push(body);
+                }
+                const section = body.insertRow();
+                section.className = 'table-section';
+                const heading = document.createElement('th');
+                heading.colSpan = 2;
+                heading.scope = 'rowgroup';
+                heading.textContent = pageText(name);
+                section.append(heading);
+                for (const key of keys) {
+                    const row = body.insertRow();
+                    const title = document.createElement('th');
+                    title.scope = 'row';
+                    title.textContent = pageText(labels[key]);
+                    const value = document.createElement('td');
+                    const raw = values[key];
+                    value.textContent = !raw ? '—' : key === 'DATE-OBS' ? raw.replace('T', ' ') + ' UTC' :
+                        /^[+-]?\d+(?:\.\d+)?$/.test(raw) ? String(Number(Number(raw).toFixed(4))) : pageText(raw);
+                    row.append(title, value);
+                }
+            }
+            const updateDetails = () => {
+                const expanded = Boolean(expandedImageHeaders[mode]);
+                detailBodies.forEach(body => { body.hidden = !expanded; });
+                detailsButton.textContent = expanded ? 'Hide details' : 'Details';
+                detailsButton.setAttribute('aria-expanded', String(expanded));
+            };
+            detailsButton.setAttribute('aria-controls', detailBodies.map(body => body.id).join(' '));
+            detailsButton.addEventListener('click', () => {
+                expandedImageHeaders[mode] = !expandedImageHeaders[mode];
+                updateDetails();
+            });
+            updateDetails();
+            const frame = document.createElement('div');
+            frame.className = 'rounded-xl overflow-hidden border border-slate-700/60';
+            frame.append(table);
+            container.replaceChildren(frame);
+        }
+
+        async function loadImageHeader(mode) {
+            if (!currentImageHeaders[mode]) document.getElementById(`header-${mode.toLowerCase()}`)?.replaceChildren();
+            if (location.protocol === 'file:') return;
+            try {
+                const response = await apiFetch(apiUrl(`/api/files/header${mode}.txt`), { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Header HTTP ${response.status}`);
+                const values = parseImageHeader(await response.text());
+                if (!values['DATE-OBS']) throw new Error('Missing observation date');
+                if (JSON.stringify(values) !== JSON.stringify(currentImageHeaders[mode])) renderImageHeader(mode, values);
+            } catch (error) {
+                console.error(`Unable to refresh ${mode} header:`, error);
+            }
+        }
+
+        function fitObservationTLE() {
+            const text = document.getElementById('observation-tle-tracking');
+            const box = text.parentElement;
+            const style = getComputedStyle(box);
+            const available = box.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            text.style.fontSize = '16px';
+            const width = text.getBoundingClientRect().width;
+            if (width > available && available > 0) {
+                text.style.fontSize = `${16 * available / width}px`;
+            }
+        }
+
+        new ResizeObserver(fitObservationTLE).observe(document.getElementById('observation-tle-tracking').parentElement);
+        document.fonts.ready.then(fitObservationTLE);
+
+        async function loadObservationTLE() {
+            if (location.protocol === 'file:') return;
+            try {
+                const response = await apiFetch(apiUrl('/api/files/TLEPNG.txt'), { cache: 'no-store' });
+                if (!response.ok) throw new Error(`TLE HTTP ${response.status}`);
+                const text = await response.text();
+                if (!text.trim()) throw new Error('TLEPNG.txt is empty');
+                const display = document.getElementById('observation-tle-tracking');
+                if (display.textContent.trim() !== text.trim()) {
+                    display.textContent = text.trim();
+                    fitObservationTLE();
+                }
+            } catch (error) {
+                console.error('Unable to refresh observation TLE:', error);
+            }
+        }
+
+        loadObservationTLE();
+
+        async function loadUpdateTLE() {
+            if (location.protocol === 'file:') return;
+            try {
+                const response = await apiFetch(apiUrl('/api/files/TLE_Update.txt'), { cache: 'no-store' });
+                if (!response.ok) throw new Error(`TLE_Update.txt: HTTP ${response.status}`);
+                const text = (await response.text()).trim();
+                if (!text) throw new Error('TLE_Update.txt is empty');
+                const display = document.getElementById('tle-display');
+                if (display.textContent.trim() !== text) display.textContent = text;
+            } catch (error) {
+                console.error('Unable to refresh Update TLE:', error);
+            }
+        }
+
+        loadUpdateTLE();
+
+        loadImageHeader('Tracking');
+        loadImageHeader('Sidereal');
+
+
+        function parseOrbitalElements(tle) {
+            const line = tle.split(/\r?\n/).find(value => value.startsWith('2 '));
+            if (!line || line.length < 63) throw new Error('Missing TLE line 2');
+            const fields = {
+                inclination: line.slice(8, 16).trim(),
+                eccentricity: line.slice(26, 33).trim(),
+                raan: line.slice(17, 25).trim(),
+                perigee: line.slice(34, 42).trim(),
+                anomaly: line.slice(43, 51).trim(),
+                motion: line.slice(52, 63).trim()
+            };
+            if (!/^\d{7}$/.test(fields.eccentricity) ||
+                Object.values(fields).some(value => !/^\d+(?:\.\d+)?$/.test(value))) {
+                throw new Error('Invalid orbital elements');
+            }
+            return {
+                inclination: `${fields.inclination}°`,
+                eccentricity: `0.${fields.eccentricity}`,
+                raan: `${fields.raan}°`,
+                perigee: `${fields.perigee}°`,
+                anomaly: `${fields.anomaly}°`,
+                motion: `${fields.motion} rev/d`
+            };
+        }
+
+        function updateOrbitalElements() {
+            let elements = {};
+            try {
+                elements = parseOrbitalElements(document.getElementById('tle-display').textContent);
+            } catch (error) {
+                console.error(error);
+            }
+            for (const key of ['inclination', 'eccentricity', 'raan', 'perigee', 'anomaly', 'motion']) {
+                document.getElementById(`tle-${key}`).textContent = (elements[key] || '—').replace('rev/d', pageLanguage === 'th' ? 'รอบ/วัน' : 'rev/d');
+            }
+        }
+
+        updateOrbitalElements();
+        new MutationObserver(updateOrbitalElements).observe(document.getElementById('tle-display'), {
+            childList: true,
+            characterData: true,
+            subtree: true
+        });
+
+        function updateLocalTime() {
+            const now = new Date();
+            document.getElementById('local-time').textContent = now.toLocaleString(pageLanguage === 'th' ? 'th-TH-u-ca-gregory' : 'en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            document.getElementById('thai-time').textContent = now.toLocaleTimeString('en-GB', {
+                timeZone: 'Asia/Bangkok',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
+        updateLocalTime();
+        setInterval(updateLocalTime, 1000);
+
+        function formatEpoch(text) {
+            const value = text.replace(/^\s*Date\s*:\s*/i, '').trim();
+            const match = value.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s+UTC)?)?$/i);
+            if (!match) throw new Error('Invalid date format');
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            const month = months.findIndex(name => name.toLowerCase() === match[2].toLowerCase());
+            const day = Number(match[1]);
+            const year = Number(match[3]);
+            const hasTime = match[4] !== undefined;
+            const hour = Number(match[4] || 0);
+            const minute = Number(match[5] || 0);
+            const second = Number(match[6] || 0);
+            const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+            if (month < 0 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) {
+                throw new Error('Invalid date');
+            }
+            const pad = number => String(number).padStart(2, '0');
+            return `Epoch: ${pad(day)} ${months[month]} ${year}${hasTime ? ` ${pad(hour)}:${pad(minute)}:${pad(second)} UTC` : ''}`;
+        }
+
+        async function loadEpoch() {
+            const display = document.getElementById('epoch-display');
+            if (location.protocol === 'file:') {
+                renderEpoch();
+                return;
+            }
+            try {
+                const response = await apiFetch(apiUrl('/api/files/Date.txt'), { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Date.txt: HTTP ${response.status}`);
+                epochEnglish = formatEpoch(await response.text());
+                renderEpoch();
+            } catch (error) {
+                console.error('Unable to refresh Epoch:', error);
+            }
+        }
+
+        loadEpoch();
+
+        function copyTLE() {
+            const tleText = document.getElementById('tle-display').innerText;
+            const copyBtn = document.getElementById('copy-btn');
+            
+            const dummy = document.createElement('textarea');
+            document.body.appendChild(dummy);
+            dummy.value = tleText;
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+
+            copyBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> <span data-page-text="Copied!">${pageText('Copied!')}</span>`;
+            copyBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+            copyBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+
+            setTimeout(() => {
+                copyBtn.innerHTML = `<i data-lucide="copy" class="w-3.5 h-3.5"></i> <span data-page-text="Copy TLE">${pageText('Copy TLE')}</span>`;
+                copyBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                copyBtn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+                lucide.createIcons();
+            }, 2000);
+        }
+
+        class AstronomicalPanZoomViewer {
+            constructor(canvasId, wrapperId, type) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.wrapper = document.getElementById(wrapperId);
+                this.type = type;
+
+                this.scale = 1.0;
+                this.panX = 0;
+                this.panY = 0;
+
+                this.isDragging = false;
+                this.startX = 0;
+                this.startY = 0;
+
+                this.imgWidth = 1;
+                this.imgHeight = 1;
+                this.image = new Image();
+                this.imageUrl = apiUrl(type === 'tracked' ? '/api/files/Satellite_Tracking.png' : '/api/files/Sidereal_Tracking.png');
+                this.imageLastModified = null;
+                this.imageLoaded = false;
+                this.image.onerror = () => {
+                    this.imageError = true;
+                    this.draw();
+                };
+                this.image.onload = () => {
+                    this.imageLoaded = true;
+                    this.imgWidth = this.image.naturalWidth;
+                    this.imgHeight = this.image.naturalHeight;
+                    this.resetView();
+                };
+                this.init();
+                void this.loadImage();
+            }
+
+            init() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                this.wrapper.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                window.addEventListener('mouseup', () => this.onMouseUp());
+                this.wrapper.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+
+                this.wrapper.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
+                this.wrapper.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
+                this.wrapper.addEventListener('touchend', () => this.onMouseUp());
+
+                this.resetView();
+            }
+
+            async loadImage() {
+                try {
+                    const response = await apiFetch(this.imageUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const nextUrl = URL.createObjectURL(await response.blob());
+                    const oldUrl = this.imageObjectUrl;
+                    this.imageObjectUrl = nextUrl;
+                    this.imageError = false;
+                    this.image.src = nextUrl;
+                    if (oldUrl) URL.revokeObjectURL(oldUrl);
+                    this.imageLastModified = response.headers.get('ETag');
+                } catch {
+                    this.imageError = true;
+                    this.draw();
+                }
+            }
+
+            async refreshImageIfChanged(force = false) {
+                if (location.protocol === 'file:') return;
+                try {
+                    const response = await apiFetch(this.imageUrl, { method: 'HEAD', cache: 'no-store' });
+                    if (!response.ok) return;
+                    const modified = response.headers.get('Last-Modified') || response.headers.get('ETag');
+                    if (!modified) {
+                        if (force) await this.loadImage();
+                        return;
+                    }
+                    if (this.imageLastModified === null) {
+                        this.imageLastModified = modified;
+                        return;
+                    }
+                    if (force || modified !== this.imageLastModified) {
+                        this.imageLastModified = modified;
+                        await this.loadImage();
+                    }
+                } catch (error) {
+                    console.error(`Unable to check image update (${this.imageUrl}):`, error);
+                }
+            }
+
+            resizeCanvas() {
+                const rect = this.wrapper.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.resetView();
+            }
+
+            resetView() {
+                this.fitScale = Math.min(this.canvas.width / this.imgWidth, this.canvas.height / this.imgHeight);
+                this.scale = this.fitScale;
+                this.panX = (this.canvas.width - this.imgWidth * this.scale) / 2;
+                this.panY = (this.canvas.height - this.imgHeight * this.scale) / 2;
+                this.updateZoomDisplay();
+                this.draw();
+            }
+
+            zoom(factor, centerX = this.canvas.width / 2, centerY = this.canvas.height / 2) {
+                const newScale = Math.min(Math.max(this.scale * factor, this.fitScale), this.fitScale * 12);
+                if (newScale === this.fitScale) {
+                    this.resetView();
+                    return;
+                }
+                if (newScale === this.scale) return;
+
+                const mouseX = centerX - this.panX;
+                const mouseY = centerY - this.panY;
+
+                this.panX -= mouseX * (newScale / this.scale - 1);
+                this.panY -= mouseY * (newScale / this.scale - 1);
+                this.scale = newScale;
+
+                this.updateZoomDisplay();
+                this.draw();
+            }
+
+            updateZoomDisplay() {
+                const display = document.getElementById(`${this.canvas.id.split('-')[0]}-zoom-level`);
+                if (display) display.innerText = `${(this.scale / this.fitScale).toFixed(1)}x`;
+            }
+
+            onMouseDown(e) {
+                this.isDragging = true;
+                this.startX = e.clientX - this.panX;
+                this.startY = e.clientY - this.panY;
+            }
+
+            onMouseMove(e) {
+                if (!this.isDragging) return;
+                this.panX = e.clientX - this.startX;
+                this.panY = e.clientY - this.startY;
+                this.draw();
+            }
+
+            onMouseUp() {
+                this.isDragging = false;
+            }
+
+            onWheel(e) {
+                e.preventDefault();
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+                this.zoom(zoomFactor, mouseX, mouseY);
+            }
+
+            onTouchStart(e) {
+                if (e.touches.length === 1) {
+                    this.isDragging = true;
+                    this.startX = e.touches[0].clientX - this.panX;
+                    this.startY = e.touches[0].clientY - this.panY;
+                }
+            }
+
+            onTouchMove(e) {
+                if (this.isDragging && e.touches.length === 1) {
+                    e.preventDefault();
+                    this.panX = e.touches[0].clientX - this.startX;
+                    this.panY = e.touches[0].clientY - this.startY;
+                    this.draw();
+                }
+            }
+
+            draw() {
+                this.ctx.save();
+                this.ctx.fillStyle = '#030712';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                if (this.imageLoaded) {
+                    this.ctx.translate(this.panX, this.panY);
+                    this.ctx.scale(this.scale, this.scale);
+                    this.ctx.drawImage(this.image, 0, 0, this.imgWidth, this.imgHeight);
+                } else {
+                    this.ctx.fillStyle = '#9ca3af';
+                    this.ctx.font = '14px sans-serif';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(pageText(this.imageError ? 'Unable to load image' : 'Loading image...'), this.canvas.width / 2, this.canvas.height / 2);
+                }
+                this.ctx.restore();
+            }
+        }
+
+        let viewer1, viewer2;
+
+        window.onload = function() {
+            if (window.lucide) lucide.createIcons();
+
+            viewer1 = new AstronomicalPanZoomViewer('viewer1-canvas', 'viewer1-wrapper', 'tracked');
+            viewer2 = new AstronomicalPanZoomViewer('viewer2-canvas', 'viewer2-wrapper', 'fixed');
+            viewer1.refreshImageIfChanged();
+            viewer2.refreshImageIfChanged();
+
+            initTleChart();
+            connectMongoUpdates();
+        };
+
+        function connectMongoUpdates() {
+            let snapshotId = null;
+            const controller = new AbortController();
+            let retryTimer;
+            const onMessage = event => {
+                let change;
+                try { change = JSON.parse(event.data); } catch { return; }
+                if (!change.snapshot || change.snapshot === snapshotId) return;
+                snapshotId = change.snapshot;
+                loadObservationTLE();
+                loadUpdateTLE();
+                loadEpoch();
+                loadImageHeader('Tracking');
+                loadImageHeader('Sidereal');
+                viewer1.refreshImageIfChanged(true);
+                viewer2.refreshImageIfChanged(true);
+                window.dispatchEvent(new Event('mongo-snapshot-changed'));
+            };
+            const connect = async () => {
+                try {
+                    const response = await apiFetch(apiUrl('/api/events'), { signal: controller.signal });
+                    if (!response.ok || !response.body) throw new Error('Live updates unavailable');
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    try {
+                        while (!controller.signal.aborted) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            let end;
+                            while ((end = buffer.indexOf('\n\n')) !== -1) {
+                                const block = buffer.slice(0, end);
+                                buffer = buffer.slice(end + 2);
+                                const data = block.split('\n').filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n');
+                                if (data) onMessage({ data });
+                            }
+                        }
+                    } finally {
+                        await reader.cancel().catch(() => {});
+                        reader.releaseLock();
+                    }
+                } catch { /* Retry temporary API/network failures. */ }
+                if (!controller.signal.aborted) retryTimer = setTimeout(connect, 3000);
+            };
+            void connect();
+            window.addEventListener('pagehide', () => {
+                controller.abort();
+                clearTimeout(retryTimer);
+                if (viewer1.imageObjectUrl) URL.revokeObjectURL(viewer1.imageObjectUrl);
+                if (viewer2.imageObjectUrl) URL.revokeObjectURL(viewer2.imageObjectUrl);
+            }, { once: true });
+        }
+
+        function zoomViewer(viewerId, factor) {
+            if (viewerId === 'viewer1') viewer1.zoom(factor);
+            if (viewerId === 'viewer2') viewer2.zoom(factor);
+        }
+
+        function resetViewer(viewerId) {
+            if (viewerId === 'viewer1') viewer1.resetView();
+            if (viewerId === 'viewer2') viewer2.resetView();
+        }
+
+        function initTleChart() {
+            const metrics = [
+                ['Inclination (deg)', '#60a5fa'], ['RAAN (deg)', '#34d399'],
+                ['Eccentricity', '#fbbf24'], ['Argument of Perigee (deg)', '#c084fc'],
+                ['Mean Anomaly (deg)', '#fb7185'], ['Mean Motion (rev/day)', '#22d3ee']
+            ];
+            const controls = document.getElementById('tle-controls');
+            const status = document.getElementById('tle-status');
+            const canvas = document.getElementById('tleChart');
+            const language = 'en';
+            const t = en => en;
+            const formatDate = (time, short = false) => new Intl.DateTimeFormat(
+                language === 'th' ? 'th-TH-u-ca-gregory' : 'en-GB',
+                { day: 'numeric', month: short ? 'short' : 'long', ...(short ? {} : { year: 'numeric' }), timeZone: 'UTC' }
+            ).format(new Date(time));
+            let chart, selection = 0, activeIndex = 0;
+            async function selectMetric(index) {
+                activeIndex = index;
+                const request = ++selection;
+                const [name, color] = metrics[index];
+                const title = name;
+                Array.from(controls.children).forEach((button, i) => {
+                    button.setAttribute('aria-pressed', String(i === index));
+                    button.style.backgroundColor = i === index ? metrics[i][1] + '26' : 'transparent';
+                    button.style.borderColor = i === index ? metrics[i][1] : '#374151';
+                });
+                document.getElementById('tle-title').textContent = title;
+                document.getElementById('tle-title').style.color = color;
+                if (chart) { chart.destroy(); chart = null; }
+                canvas.hidden = true;
+                status.textContent = t('Loading observations…', 'กำลังโหลดข้อมูล…');
+                document.getElementById('tle-summary').replaceChildren();
+                try {
+                    if (!window.Chart) throw new Error(t('Chart library could not load. Check your connection and reload.', 'โหลดไลบรารีกราฟไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วรีเฟรช'));
+                    const response = await apiFetch(apiUrl('/api/tle-history'), { cache: 'no-store' });
+                    if (!response.ok) throw new Error(`Unable to load TLE.txt history (HTTP ${response.status}).`);
+                    const history = await response.json();
+                    const rows = history.rows.map(row => ({
+                        date: row.date, value: row.values[index], time: Date.parse(row.date + 'T00:00:00Z')
+                    }));
+                    if (request !== selection) return;
+                    if (!rows.length) throw new Error(t('No daily TLE.txt observations yet.', 'ไม่มีข้อมูลในไฟล์ CSV นี้'));
+                    canvas.hidden = false;
+                    canvas.setAttribute('aria-label', `${title}: ${rows.length} ${t('observations', 'จุดข้อมูล')}`);
+                    const values = rows.map(row => row.value);
+                    const precision = name.startsWith('Mean Motion') ? 8 : name === 'Eccentricity' ? 7 : 4;
+                    const formatValue = value => value.toLocaleString('en-US', { minimumFractionDigits: precision, maximumFractionDigits: precision });
+                    const change = values[values.length - 1] - values[0];
+                    const summary = document.getElementById('tle-summary');
+                    summary.replaceChildren();
+                    [[t('Latest value', 'ค่าล่าสุด'), formatValue(values[values.length - 1])],
+                     [t('Change over period', 'ผลต่างระหว่างค่าแรกและค่าสุดท้าย'), (change > 0 ? '+' : '') + formatValue(change)],
+                     [t('Range', 'ช่วงค่าต่ำสุดถึงสูงสุด'), `${formatValue(Math.min(...values))} – ${formatValue(Math.max(...values))}`]
+                    ].forEach(([label, value]) => {
+                        const card = document.createElement('div');
+                        card.className = 'rounded-xl border border-slate-800 bg-slate-900/60 p-3';
+                        const caption = document.createElement('p');
+                        caption.className = 'text-xs text-gray-400 mb-1'; caption.textContent = label;
+                        const number = document.createElement('p');
+                        number.className = 'text-sm sm:text-base font-semibold font-mono';
+                        number.style.color = color; number.textContent = value;
+                        card.appendChild(caption); card.appendChild(number); summary.appendChild(card);
+                    });
+                    chart = new Chart(canvas.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: rows.map(row => formatDate(row.time)),
+                            datasets: [{ label: title, data: rows.map(row => row.value), borderColor: color,
+                                backgroundColor: context => {
+                                    const { ctx, chartArea } = context.chart;
+                                    if (!chartArea) return color + '20';
+                                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                                    gradient.addColorStop(0, color + '55');
+                                    gradient.addColorStop(1, color + '02');
+                                    return gradient;
+                                }, pointBackgroundColor: '#0f172a', pointBorderColor: color,
+                                pointBorderWidth: 2, borderWidth: 3,
+                                pointRadius: 4, pointHoverRadius: 7, pointHoverBackgroundColor: color,
+                                fill: 'start', tension: 0.3, cubicInterpolationMode: 'monotone' }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            animation: { duration: 450 }, layout: { padding: 8 },
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { padding: 12, cornerRadius: 10, displayColors: false,
+                                    borderColor: color + '66', borderWidth: 1,
+                                    callbacks: { label: context => `${title}: ${formatValue(rows[context.dataIndex].value)}`,
+                                        afterLabel: () => t('TLE epoch', 'วัน epoch ของ TLE') },
+                                    backgroundColor: '#111827', titleColor: '#ffffff', bodyColor: '#d1d5db' }
+                            },
+                            scales: {
+                                x: { title: { display: true, text: t('Date', 'วันที่'), color: '#9ca3af' },
+                                    grid: { display: false }, ticks: { color: '#9ca3af', maxRotation: 0, maxTicksLimit: 6,
+                                        callback: function(value) { return formatDate(rows[value].time, true); } } },
+                                y: { grace: '15%', title: { display: true, text: title, color },
+                                    grid: { color: 'rgba(148,163,184,0.10)' }, border: { display: false },
+                                    ticks: { color: '#9ca3af', maxTicksLimit: 6 } }
+                            }
+                        }
+                    });
+                    status.textContent = rows.length === 1
+                        ? t('1 observation — a line will appear when more observations are added.', 'ข้อมูล 1 จุด — เส้นกราฟจะแสดงเมื่อเพิ่มข้อมูล')
+                        : `${t(`${rows.length} daily points`, `ข้อมูลรายวัน ${rows.length} จุด`)} · ${formatDate(rows[0].time)} – ${formatDate(rows[rows.length - 1].time)}`;
+                    if (history.skipped) status.textContent += ` · ${history.skipped} invalid TLE records skipped`;
+                    document.getElementById('tle-badge').textContent = `TLE.txt HISTORY · ${rows.length} DAYS`;
+                } catch (error) {
+                    if (request !== selection) return;
+                    status.textContent = error.message;
+                }
+            }
+            metrics.forEach(([title, color], index) => {
+                const button = document.createElement('button');
+                button.type = 'button'; button.textContent = title;
+                button.className = 'px-3 py-2 rounded-lg border text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+                button.style.color = color;
+                button.setAttribute('aria-controls', 'tleChart');
+                button.addEventListener('click', () => selectMetric(index));
+                controls.appendChild(button);
+            });
+            selectMetric(0);
+            window.addEventListener('mongo-snapshot-changed', () => selectMetric(activeIndex));
+        }
+
+    </script>
+</body>
+</html>
