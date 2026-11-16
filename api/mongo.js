@@ -44,7 +44,7 @@ export function createLiveUpdates(collection) {
     if (closed) return;
     try {
       stream = collection.watch([
-        { $match: { operationType: 'insert' } },
+        { $match: { operationType: { $in: ['insert', 'update', 'replace', 'delete'] } } },
         { $project: { _id: 1, documentKey: 1, operationType: 1 } },
       ], resumeToken ? { resumeAfter: resumeToken } : {});
       stream.on('change', change => notify(change.documentKey._id));
@@ -172,13 +172,25 @@ export function parseDailyTle(text) {
 
 export async function latestTleHistory(collection) {
   const days = new Map(); let skipped = 0;
-  const cursor = fieldHistory(collection, 'TLE.txt');
+  const cursor = collection.aggregate([
+    { $sort: { _id: -1 } },
+    { $project: {
+      _id: 1,
+      value: { $getField: { field: { $literal: 'TLE.txt' }, input: '$$ROOT' } },
+      observationDate: { $getField: { field: { $literal: 'Date.txt' }, input: '$$ROOT' } },
+    } },
+    { $match: { value: { $ne: null, $exists: true } } },
+  ]);
   try {
     for await (const document of cursor) {
       if (typeof document.value !== 'string' || !document.value.trim()) continue;
       let row;
-      try { row = parseDailyTle(document.value); } catch { skipped++; continue; }
-      // Newest import wins for an epoch date; missing dates remain missing.
+      try {
+        row = parseDailyTle(document.value);
+        if (typeof document.observationDate !== 'string') throw new Error('Missing Date.txt');
+        row.date = csvDay(document.observationDate.replace(/^\s*Date\s*:\s*/i, ''));
+      } catch { skipped++; continue; }
+      // Newest import wins for a Date.txt date; both fields come from the same document.
       if (!days.has(row.date)) days.set(row.date, row);
     }
   } finally { await cursor.close(); }
